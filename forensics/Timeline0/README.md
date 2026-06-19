@@ -31,18 +31,21 @@ debugfs -R 'ls -l /' partition4.img
 debugfs -R 'cat /root/.ash_history' partition4.img
 ```
 
-We poke around the obvious spots this way, the home folders, `/root`, the logs. The history file in
-`/root` is called `.ash_history`, not the usual `.bash_history`, so this is a small Alpine system on
-the `ash` shell. It only contains `poweroff`, so nothing was edited or hidden through the shell. The
-logs are just a plain boot and shutdown. We also search the whole image for the string `picoCTF`:
+We poke around the home folders, `/root`, the logs. The history file in
+`/root` is called `.ash_history`, not `.bash_history`, so I found out it's a small Alpine system on
+the `ash` shell. The history itself only contains `poweroff`, so nothing was edited or hidden through the shell. 
+
+![Poking around the image](assets/navigate.png)
+
+![Poking around the image](assets/navigate2.png)
+
+I also try searching the whole image for the string `picoCTF`:
 
 ```bash
 strings partition4.img | grep -i picoCTF
 ```
 
 Nothing comes up.
-
-![Poking around the image](assets/navigate.png)
 
 The flag is not sitting in a file we can just read, so it is hidden some other way.
 
@@ -52,35 +55,20 @@ The flag is not sitting in a file we can just read, so it is hidden some other w
 
 I decided here to use the hints given on picoctf, The challenge is called *Timeline*, and the
 hints say to build a Sleuth Kit MAC timeline, and that sloppy timestomping can leave strange, very
-old timestamps. Timestomping means changing a file's timestamps to hide when it was really created or
-touched. So instead of reading files, we just have to look at *when* every file was modified, and watch for an anomaly with Sleuth Kit. `fls` lists every file with its timestamps, and `mactime` sorts them
-into a readable timeline:
+old timestamps. 
+I learned in my Forensics class that timestomping means changing a file's timestamps to hide when it was really created or
+touched. So instead of reading files, we just have to look at *when* every file was modified, and watch for an anomaly with Sleuth Kit with `fls` and `mactime` (listing and sorting timelines) :
 
 ```bash
 fls -r -m "/" partition4.img > timeline.body
 mactime -b timeline.body -d > timeline.csv
 ```
-
-To spot the anomaly without guessing, we look at how the dates are spread out, counting the files
-per year:
-
-```bash
-awk -F',' 'NR>1 {split($1,a," "); print a[4]}' timeline.csv | sort | uniq -c
-```
-
-Almost everything sits in 2021, 2024 and 2025, the dates a normal system would have. One file sits
-alone in 1985, decades before anything else. That is the outlier the hint warned about, so we pull
-its line out:
-
-```bash
-grep "1985" timeline.csv
-Tue Jan 01 1985 18:00:00,41,macb,...,4945,"/bin/bcab"
-```
+This produces a timeline.csv file we can directly read on vscode, fortunately we didn't have to search much as it was already sorted, and we can spot something odd :
 
 ![The timestamp outlier](assets/outlier.png)
 
-`/bin/bcab`, 41 bytes, hiding among the normal system binaries but with a date decades older than
-everything around it. That is our timestomped file.
+`/bin/bcab`, hiding among the normal system binaries but with a date decades older than
+everything around it, we assume that is our timestomped file.
 
 ---
 
@@ -95,8 +83,8 @@ cat: Inode checksum does not match inode while reading inode 4945
 
 I did not expect that error, but it fits once you look it up. ext4 keeps a checksum on each inode to
 catch tampering, and whoever faked the timestamps edited the inode directly without recomputing it,
-so ext4 now refuses to trust it. The error is really just more proof the file was messed with. Sleuth
-Kit's `icat` reads the raw structures and ignores that check, so it pulls the file out anyway using
+so ext4 now refuses to trust it. I learned that Sleuth
+Kit's `icat` can read the raw structures and ignores that check, so it pulls the file out anyway using
 the inode number from the timeline (4945):
 
 ```bash
@@ -104,14 +92,12 @@ icat partition4.img 4945
 NzFtMzExbjNfMHU3MTEzcl9oM3JfNDNhMmU3YWYK
 ```
 
-The content is base64. We decode it:
+It looks like the content is base64. We decode it:
 
 ```bash
 icat partition4.img 4945 | base64 -d
 71m311n3_0u7113r_h3r_43a2e7af
 ```
-
-![Extracting and decoding the file](assets/flag.png)
 
 ---
 
@@ -123,5 +109,3 @@ Wrapping it in the picoCTF format the challenge asked for:
 picoCTF{71m311n3_0u7113r_h3r_43a2e7af}
 ```
 
-The leetspeak spells "timeline outlier", which is exactly how we caught it, the one file whose
-timestamp did not belong.
