@@ -80,5 +80,4 @@ picoCTF{000000e5}
 ```
 
 > Small note: the source file picoCTF handed me had different placeholder constants (`88`, `4`,
-> `3`), while the variables given with my instance were `86`, `3`, `3`. The variables are the
-> ones that decide the flag, so I retraced with those and lined the file up to match.
+> `3`), while the variables given with my instance were `86`, `3`, `3`.
