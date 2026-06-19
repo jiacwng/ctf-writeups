@@ -63,7 +63,7 @@ func:
 `func` loads the three constants and the argument, then runs three operations in a row:
 
 - `lsl w0, w1, w0` is `a << b`, a left shift, so `86 << 3 = 688`
-- `sdiv` is signed integer division: `688 / 3 = 229` (truncated, remainder 1 is dropped)
+- `sdiv` is signed integer division: `688 / 3 = 229` (truncated)
 - `sub` does `229 - arg`
 
 So `func(arg) = 229 - arg`.
