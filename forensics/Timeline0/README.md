@@ -47,7 +47,7 @@ strings partition4.img | grep -i picoCTF
 
 Nothing comes up.
 
-The flag is not sitting in a file we can just read, so it is hidden some other way.
+The flag is not sitting in a file we can just read and I didn't wanna go through the hundreds and hundreds of files individually.
 
 ---
 
